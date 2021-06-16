@@ -1,0 +1,51 @@
+---
+title: "Getting started with R and diet data"
+author: "Sarah Gaichas"
+date: "6/16/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Basics
+
+This document has "code chunks" that should help get started with using R to analyze and visualize the fish diet data that Brian provided.
+
+### Try something simple
+
+R can do basic calculations right from the "Console" when you type them in at the `>` prompt.
+
+Try typing in `2+2` at the `>` prompt and see what happens. 
+
+### Reading data into R
+
+The diet dataset is called `allwt2.csv` and I have downloaded it from the google drive and put it in a folder called `data`. It is easy to read data in to R, but the hard part is usually having R know where to look for the data. I can tell R where to look for it on my computer in order to read it in, or I can read it directly from the google drive. 
+
+In the first line below, I tell R to use the package called `here` which establishes the place on my computer where I am running my session as the place to look. The second line below reads the file using the R command `read.csv` on the file `allwt2.csv` that is located in the `data` folder.
+
+```{r}
+library(here)
+
+dietdat1 <- read.csv(here("data/allwt2.csv"))
+
+```
+
+If we type `dietdat1` at the prompt, we see the top of the datafile.
+
+```{r}
+
+dietdat1
+
+```
+
+
+
+
+## Side note on R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. 
+
