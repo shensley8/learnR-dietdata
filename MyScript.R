@@ -46,6 +46,14 @@ ntows %>%
   geom_line() + 
   facet_wrap(~comname)
 
+# what are all the species in the dataset?
+# the format is [datasetname]$[columnname]
+# and the unique R command finds only the unique ones
+# instead of listing thousands of replicate species names
+
+unique(dietdat1$comname)
+
+
 # filter allows us to only look at a few species
 # otherwise code is the same as above
 

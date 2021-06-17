@@ -86,7 +86,17 @@ ntows %>%
 
 ```
 
-There are a lot of predators! So maybe we should just look at a few:
+There are a lot of predators! So maybe we should just look at a few. To use a `filter` statement in our code to filter down to just a few species, we need to know the exact names of the species. 
+
+Here is code to see all the species names in the dataset (the unique values in the comname column):
+
+```{r}
+
+unique(dietdat1$comname)
+
+```
+
+Now we can choose a few and list them in the `filter` statement:
 
 ```{r}
 
@@ -105,6 +115,7 @@ ntows %>%
   facet_wrap(~comname)
 
 ```
+
 
 Now we have an idea of how many tows were sampled for diet in each area for each species over time.
 
