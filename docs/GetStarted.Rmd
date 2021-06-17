@@ -32,16 +32,83 @@ dietdat1 <- read.csv(here("data/allwt2.csv"))
 
 ```
 
-If we type `dietdat1` at the prompt, we see the top of the datafile.
+If we type `dietdat1` at the prompt, we see the some or all of the datafile, depending on how long it is.
 
-```{r}
+```{r, attr.output = 'style="max-height: 100px;"'}
 
 dietdat1
 
 ```
 
+Quick ways to view the data are the R functions `head`, which gives the top 6 lines of the dataset including the column names, and `names`, which just tells you the column (variable) names.
 
+```{r}
+head(dietdat1)
 
+names(dietdat1)
+```
+
+## Basic data visualization
+
+There are many possible ways to look at the data that R can facilitate. Here I'll use `tidyverse` functions because I am used to them, but there are a lot of ways to do this using base R or other packages.
+
+First we'll look at how many tows per year there are for each predator in each area (Ecological Production Unit--epu in the dataset).
+
+```{r}
+library(tidyverse)
+
+# make a new dataset called ntows from dietdat1 that sums tows into a variable called anntows
+
+ntows <- dietdat1 %>% # a pipe operator that strings the commands together
+  group_by(comname, year, epu) %>% # for each predator/year/epu combo
+  summarise(anntows = sum(num_tows, na.rm = TRUE)) # sum the tows
+
+ntows
+  
+```
+
+Now we can plot our new ntows dataset to see how many tows had stomach collections (sample size) for each species in each area over time.
+
+```{r}
+
+# ggplot is a quick way to look across lots of things
+# the aes statement sets up x and y axis variable
+# with color differentiating area, 
+# line plot is defined with geom_line, and
+# using facet_wrap does a plot for each predator (comname)
+
+ntows %>%
+  ungroup() %>%
+  ggplot(aes(x=year, y=anntows, color=epu)) + 
+  geom_line() + 
+  facet_wrap(~comname)
+  
+
+```
+
+There are a lot of predators! So maybe we should just look at a few:
+
+```{r}
+
+# filter allows us to only look at a few species
+# otherwise code is the same as above
+
+ntows %>%
+  ungroup() %>%
+  filter(comname %in% c("SUMMER FLOUNDER",
+                        "SILVER HAKE",
+                        "LITTLE SKATE",
+                        "ATLANTIC COD"
+                        )) %>%
+  ggplot(aes(x=year, y=anntows, color=epu)) + 
+  geom_line() + 
+  facet_wrap(~comname)
+
+```
+
+Now we have an idea of how many tows were sampled for diet in each area for each species over time.
+
+You can try copying the code from each codeblock to see if this works on your computer.
 
 ## Side note on R Markdown
 
