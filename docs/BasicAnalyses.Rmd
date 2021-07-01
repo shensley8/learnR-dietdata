@@ -205,15 +205,102 @@ One question we may have is whether diet has changed over time for a particular 
 
 Which of the columns should we look at for this, and how should we treat the data?
 
+We may want to look at the proportion of each prey in the diet, but we can't just sum up the `relmsw` column the way we did tows. This is a proportion relative to the `totwt` column, which is the total for epu, season, and year. 
 
+One way to look at the diet proportion data, then, is by epu, season, and year without trying to sum over seasons like we did in `ntows`. For example, we can pick a single predator and look at diet composition over time separately by epu and season:
 
 
 ```{r}
 
+dietdat2 %>% 
+  filter(comname %in% c("SUMMER FLOUNDER"),   #only look at this predator
+         !is.na(relmsw)) %>%                  #take out the NA values (literally "not is NA")
+  ggplot(aes(x=year, y=relmsw, fill=prey)) +  #year on x axis, %diet comp on y, by prey
+  geom_bar(width = 1, stat = "identity") +    #stacked bar chart
+  facet_grid(epu~season) +                    #separate by epu and season
+  labs(y = "% diet composition")
+
 ```
 
-Here we use the same basic `ggplot` functions to look at how the proportion by weight in diet has changed for each prey group for all predators.
+The default colors aren't that great at distinguishing the 10 prey categories. This is something we can change. One nice resource is [this website](http://medialab.github.io/iwanthue/) that allows you to select a range of colors for maximum contrast across a number of groups. So selecting 10 and colorblind friendly, we get a set of color codes to use in our plots. I've copied the Hex codes from the website. 
 
+After trying this, I decided to make the color for other fish (OTH_FIS) "gray" because the original blue looked too much like the one for benthic fish (FIS_BEN). I just commented out the hex code below. You can also just write in color names by consulting a list like [this one](http://derekogle.com/NCGraphing/resources/colors). 
+
+```{r}
+
+preycol <- c(  #make object preycol by combining this list of hex codes
+  "#3b6100",
+  "#6481fc",
+  "#6ce87e",
+  "#c152c1",
+  "#ddd87d",
+  "#4a56cb",
+  "#ed4c52",
+  "grey", #"#0194d5",
+  "#cd1d78",
+  "#e289b3")
+
+```
+
+
+We can look at a different predator using the same code. We can also write a function that takes predator name as its argument and makes the plot; this way we don't have to keep cutting and pasting.
+
+```{r}
+
+plotSpDiet <- function(dat, species){   #defines the name of the function and the requied inputs
+  
+dat %>% 
+  filter(comname %in% species,                #only look at this predator
+         !is.na(relmsw)) %>%                  #take out the NA values (literally "not is NA")
+  ggplot(aes(x=year, y=relmsw, fill=prey)) +  #year on x axis, %diet comp on y, by prey
+  geom_bar(width = 1, stat = "identity") +    #stacked bar chart
+  scale_fill_manual(values=preycol) +         #custom colors
+  facet_grid(epu~season) +                    #separate by epu and season
+  labs(y = "% diet composition",              #add sensible labels
+       title = species) 
+    
+  
+}                                        #all function definitions end with the closed bracket
+```
+
+The function takes the name of the data object and the species common name (written exactly as it is in the file) to make the plot.
+
+```{r}
+plotSpDiet(dietdat2, "SUMMER FLOUNDER")
+```
+
+```{r}
+plotSpDiet(dietdat2, "ATLANTIC COD")
+```
+
+```{r}
+plotSpDiet(dietdat2, "LITTLE SKATE")
+```
+
+```{r}
+plotSpDiet(dietdat2, "SILVER HAKE")
+```
+
+We can use the same function on the original dataset with fewer prey categories; maybe it is easier to see trends? Just call the same function with `dietdat1` as the input data. Since it has all the same column names, the same function works.
+
+```{r}
+plotSpDiet(dietdat1, "SUMMER FLOUNDER")
+```
+
+```{r}
+plotSpDiet(dietdat1, "ATLANTIC COD")
+```
+
+```{r}
+plotSpDiet(dietdat1, "LITTLE SKATE")
+```
+
+```{r}
+plotSpDiet(dietdat1, "SILVER HAKE")
+```
+
+
+What if we wanted to see whether there are trends across all predators? I think we could multiply the diet proportion by the total stomach weight to convert to prey weight, then sum across some predator groups... but for this we should talk to Brian!
 
 
 ## Side note on R Markdown
