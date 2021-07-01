@@ -1,0 +1,224 @@
+---
+title: "Basic diet data analyses with R"
+author: "Sarah Gaichas"
+date: "7/1/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(googledrive)
+library(here)
+
+```
+
+## Read in the newer data
+
+The original diet dataset is called `allwt2.csv` and the updated dataset is called `allwt2_fis.csv`. I have downloaded both from the google drive and put both in a folder called `data`. 
+
+Brian showed a way to read directly from google drive with the code below. This is useful if the file is updated. It may send you to an authentication screen when you run it. My console said: 
+
+>The googledrive package is requesting access to your Google account. Select a pre-authorised account or enter '0' to obtain a new token. Press Esc/Ctrl + C to abort.
+
+I pressed 1 for my stored account, which was the only choice. It only does this once per session. 
+
+Either way, once the file is on your local machine, the same code reads it in. It is easy to read data in to R, but the hard part is usually having R know where to look for the data. I can tell R where to look for it on my computer in order to read it in, or I can read it directly from the google drive. 
+
+### Loading packages and reading data into R
+
+In the first lines below, I tell R to use the package called `googledrive` that can download the files directly. The second line tells R to use `here` which establishes the place on my computer where I am running my session as the place to put the downloaded files. The next three lines use `googledrive` functions to find all files of the type comma separated values (.csv) and download the two files that we want. Comments not read by R start with #. 
+
+```{r fromgdrive, eval=FALSE}
+
+library(googledrive) #load the library that can work with googledrive
+library(here) #load the library that knows where my R project is on my computer
+
+drive_find(type='csv') #this finds a list of 652 files for me!
+
+# format is ("filenameongdrive", "where I want it to go", should I write over the local file if it is already there?
+
+drive_download("allwt2.csv", here('data/allwt2.csv'), overwrite = T)
+
+drive_download("allwt2_fis.csv", here('data/allwt2_fis.csv'), overwrite = T)
+
+```
+
+The code below reads the files into R objects using the R command `read.csv` on the two files now located in the `data` folder. R is making two objects that we can do further analysis on--`dietdat1` (the original dataset) and `dietdat2` (the newer dataaset with different prey categories).
+
+I use the assignment operator, an arrow `<-`, to show that the named object on the left hand side comes from the function or set of commands on the right hand side. This will get used a lot! A shortcut in Rstudio for the arrow is to hold the `option` (or `alt`) key at the same time as the `-` key. You can also just type `<` and `-` together. (You can also use an equals sign `=` for assignment, but this can get confusing when you need an `=` to use a function elsewhere in the code.)
+
+```{r}
+
+dietdat1 <- read.csv(here('data/allwt2.csv'), sep = ',', h=T, na.strings = c(NA)) #read in first dataset
+
+dietdat2 <- read.csv(here("data/allwt2_fis.csv")) #read in second dataset (I've left off the defaults above)
+
+```
+
+If we type `dietdat2` at the prompt, we see the some or all of the data object, depending on how long it is.
+
+```{r, attr.output = 'style="max-height: 100px;"'}
+
+dietdat2
+
+```
+
+
+### Quick views of the data
+
+Quick ways to view the data are the R functions `head`, which gives the top 6 lines of the dataset including the column names, and `names`, which just tells you the column (variable) names. For R functions that operate on an object, you just put the object's name inside the () immediately following the function name. Note there is no space between function name and the opening (!. 
+
+```{r}
+head(dietdat1) #show top 6 rows and all columns
+
+names(dietdat1) #show column names
+
+head(dietdat2) #show top 6 rows and all columns
+
+names(dietdat2) #show column names
+```
+
+The names for each column are defined in the file `defs.xlsx`. We can read that in too, but it needs another package (`readxl`) loaded to read an excel table instead of a comma separated file. 
+
+```{r}
+
+library(readxl) #load the package that can read excel files
+
+namedefs <- read_xlsx(here("data/defs.xlsx")) #read the file into R
+
+namedefs #show me the contents
+
+as.data.frame(namedefs) #show me _all_ the contents!
+```
+
+It is difficult to see how the two datasets are different from looking at only the first 6 lines: they both have the same column names (which means we can use the same code to analyze them--a plus!), and there is only one difference in the `prey` column. In the first dataset, the only prey is BENINV (benthic invert) while in the second it is BIVALV (bivalve--a clam), so prey are more specific in the second dataset.
+
+We can get a list of the different prey types in each dataset using this code. We use the R function `unique` to see each named prey in each dataset where the column is prey. The format for looking at one column is `datasetname$columnname`. 
+
+These are the prey in dataset 1:
+
+```{r}
+unique(dietdat1$prey)
+```
+
+And these are the prey in dataset 2:
+
+```{r}
+unique(dietdat2$prey)
+```
+
+Brian has provided a lookup table so we can see the definitions of these categories. We can read that into R the same way as we did with the datasets. (I'm skipping the googledrive step because I've already downloaded it but that can also be done the same way as above.) 
+
+```{r}
+preytable <- read.csv(here("data/fis_pytab3.csv")) #read in the prey lookup table
+preytable #note that it puts the last 2 columns below!
+```
+
+
+## Basic data visualization
+
+There are many possible ways to look at the data that R can facilitate. Here I'll use `tidyverse` functions because I am used to them, but there are a lot of ways to do this using base R or other packages. When you load this package it gives you information on the set of (sub) packages it is loading with verison numbers and also tells you which conflicts you might have that could give unexpected behavior. 
+
+### Summarize number of tows per predator and area
+
+First we'll look at how many tows per year there are for each predator in each area (Ecological Production Unit--epu in the dataset). There are a lot of new symbols in here but they are designed to make the code easier to read (once you know what they mean). This is the same code as in the [Getting started with R page](https://sgaichas.github.io/learnR-dietdata/GetStarted.html), but now we apply it to the newer dataset `dietdat2` just by changing the name.
+
+Another symbol I use is the pipe operator `%>%`. When you see that, it means more code is coming on the next line that alters the dataset.
+
+So the way to read the below with the assigment operator and the pipe operator is: R object `ntows` is made from `<-` R object `dietdat2` with additional manipulations `%>%` 1. organize the data into groups by the common name of the species, year, and ecologial production unit, and `%>%` 2. within those groups, make a new variable called `anntows` that sums up the number of tows, removing any missing values. 
+
+```{r}
+library(tidyverse)
+
+# make a new dataset called ntows from dietdat2 that sums tows into a variable called anntows
+
+ntows <- dietdat2 %>% # a pipe operator that strings the commands together
+  group_by(comname, year, epu) %>% # for each predator/year/epu combo
+  summarise(anntows = sum(num_tows, na.rm = TRUE)) # sum the tows
+
+ntows
+  
+```
+
+
+### Visualize numbers of tows over time
+
+Now we can plot our new `ntows` dataset to see how many tows had stomach collections (sample size) for each species in each area over time. (This should be identical between datasets!) 
+
+Within `ggplot` we have one more new operator, `+` that lets you add "layers" to your plot. So below we are not making a R new object (no assignment operator), but just modifying `ntows` for plotting. After we make some minor changes to `ntows` with the pipe operator `%>%` we make a `ggplot` object and each layer is added to that with `+`: 
+
+```{r}
+
+# ggplot is a quick way to look across lots of things
+# the aes statement sets up x and y axis variable
+# with color differentiating area, 
+# line plot is defined with geom_line, and
+# using facet_wrap does a plot for each predator (comname)
+
+ntows %>% #starting with ntows, make these addtional changes
+  ungroup() %>% #remove the groupings from the last step
+  ggplot(aes(x=year, y=anntows, color=epu)) + #make a plot object
+  geom_line() + 
+  facet_wrap(~comname)
+  
+
+```
+
+### Filter down to a few predators
+
+There are a lot of predators! So maybe we should just look at a few. To use a `filter` statement in our code to filter down to just a few species, we need to know the exact names of the species. 
+
+Here is code using the R function `unique` again to see all the species names in the dataset (the unique values in the comname column):
+
+```{r}
+
+unique(dietdat2$comname)
+
+```
+
+Now we can choose a few and list them in the `filter` statement:
+
+```{r}
+
+# filter allows us to only look at a few species
+# otherwise code is the same as above
+
+ntows %>%
+  ungroup() %>%
+  filter(comname %in% c("SUMMER FLOUNDER",
+                        "SILVER HAKE",
+                        "LITTLE SKATE",
+                        "ATLANTIC COD"
+                        )) %>%
+  ggplot(aes(x=year, y=anntows, color=epu)) + 
+  geom_line() + 
+  facet_wrap(~comname)
+
+```
+
+
+Now we have an idea of how many tows were sampled for diet in each area for each species over time.
+
+### Summarize diet by predator and area
+
+One question we may have is whether diet has changed over time for a particular predator. The number of tows sampled that we looked at above may affect our understanding. 
+
+Which of the columns should we look at for this, and how should we treat the data?
+
+
+
+
+```{r}
+
+```
+
+Here we use the same basic `ggplot` functions to look at how the proportion by weight in diet has changed for each prey group for all predators.
+
+
+
+## Side note on R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. 
+
