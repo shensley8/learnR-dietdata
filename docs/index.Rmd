@@ -9,3 +9,5 @@ output: html_document
 <a href="https://sgaichas.github.io/learnR-dietdata/GetStarted.html" target="_blank"> Getting started with R </a>
 
 <a href="https://sgaichas.github.io/learnR-dietdata/BasicAnalyses.html" target="_blank"> Read in data, wrangle, visualize </a>
+
+<a href="https://sgaichas.github.io/learnR-dietdata/SimpleTrends.html" target="_blank"> Apply SOE trend analysis to prey categories for each predator </a>

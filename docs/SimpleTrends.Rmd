@@ -1,0 +1,214 @@
+---
+title: "Simple trend analysis"
+author: "Sarah Gaichas"
+date: "7/9/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(googledrive)
+library(here)
+```
+
+## Is there a change in diet?
+
+Here we'll use the diet datasets we read in before and apply trend analysis for individual prey types by predator.
+
+This code is the same as we used before to read in both the dataset with 4 prey categories (dietdat1) and the dataset with 10 prey categories (dietdat2). (I've already written the statement `library(here)` above but it may not show up in the webpage.)
+
+```{r}
+
+dietdat1 <- read.csv(here('data/allwt2.csv'), sep = ',', h=T, na.strings = c(NA)) #read in first dataset
+
+dietdat2 <- read.csv(here("data/allwt2_fis.csv")) #read in second dataset (I've left off the defaults above)
+
+```
+
+We'll try using the same trend analysis that we use in the State of the Ecosystem report for all the indicators. For this we assume that the proportion of a given prey type in a given predator's diet is the indicator. 
+
+The plots will have black dots for the indicator data (prey proportion), a purple line for a significant decreasing trend, and an orange line for a significant increasing trend. There will be no line when there is no significant trend.
+
+Statistically, this may not be the best thing to do, because these are not independent trends. Proportions have to add to 1 (or 100%) so if the proportion of one prey is significantly down, another one (or a couple) must go up to make all the proportions sum to 1. However, this can be a quick initial look at what we may have in our dataset so that we can decide what to focus on next.
+
+We need the `ecodata` R package to get the trend testing/plotting function `geom_gls()`. Also, we need `tidyverse.`
+
+The `ecodata` package that we use for State of the Ecosystem reporting needs to be installed from GitHub. Installation requires the package`remotes` that can be installed from Rstudio under the Packages tab, Install button.
+
+```{r, eval=FALSE}
+remotes::install_github("noaa-edab/ecodata",build_vignettes=TRUE)
+```
+
+
+```{r, message=FALSE}
+library(tidyverse)
+library(ecodata)
+```
+
+
+Here is a function to plot prey trends for each predator (by epu, season, and prey).
+
+```{r}
+
+plotSpPreytrend <- function(dat, species){   #defines the name of the function and the requied inputs
+  
+dat %>% 
+  filter(comname %in% species,                #only look at this predator
+         !is.na(relmsw)) %>%                  #take out the NA values (literally "not is NA")
+  ggplot(aes(x=year, y=relmsw)) +             #year on x axis, %diet comp on y
+  geom_point()+                               #proportion in each year is a point
+  ecodata::geom_gls(aes(x=year, y=relmsw), warn = FALSE) + #this prints lines if significant trend found
+  ecodata::theme_facet() +                   #a simpler theme, easier to read
+  facet_grid(epu~season~prey,                 #separate by epu, season, and prey
+             labeller = labeller(.multi_line = FALSE)) +      #format labels              
+  theme(strip.text.x = element_text(size = 8)) +  #plot titles smaller
+  labs(y = "% diet composition",              #add sensible labels
+       title = species) 
+    
+  
+}   
+
+```
+
+Test it! The plots are too small if I do all areas, so I will filter the dataset to look at only one area within the function call below: `(dietdat1%>%filter(epu=="MAB"))` instead of `dietdat1`. 
+
+Here are plots for summer flounder in the Mid-Atlantic Bight; some trends detected:
+
+```{r}
+plotSpPreytrend((dietdat1%>%filter(epu=="MAB")), "SUMMER FLOUNDER")
+```
+
+Atlantic cod in the Gulf of Maine; some trends detected: 
+
+```{r}
+plotSpPreytrend((dietdat1%>%filter(epu=="GOM")), "ATLANTIC COD")
+```
+
+Atlantic cod on Georges Bank; highly variable, but no significant trends:
+
+```{r}
+plotSpPreytrend((dietdat1%>%filter(epu=="GB")), "ATLANTIC COD")
+```
+
+Little skate on Georges Bank; also no significant trends:
+
+```{r}
+plotSpPreytrend((dietdat1%>%filter(epu=="GB")), "LITTLE SKATE")
+```
+
+Silver hake in the Gulf of Maine (this one gives a couple of error messages related to the trend testing):
+
+```{r}
+plotSpPreytrend((dietdat1%>%filter(epu=="GOM")), "SILVER HAKE")
+```
+
+Silver hake in the Mid Atlantic:
+
+```{r}
+plotSpPreytrend((dietdat1%>%filter(epu=="MAB")), "SILVER HAKE")
+```
+
+It seems we have some trends for some predators in some areas. See if you can get the function to run for other predators and areas, using this predator list:
+
+```{r}
+predNames <- unique(dietdat1$comname)
+
+predNames
+```
+
+## By area and species 
+
+We can also do plots for all predators in an area. 
+
+The code below shows how the plots were generated. We will first filter the dataset to each epu and use only rows with data (the column `relmsw` does not have `NA` in it) count the number of years of data for each predator and only include those with more than 5 years of data. Later we could refine further by using only data with a certain number of tows in an area/year/season for a predator. This is just a preliminary look to discuss next week. 
+
+You can click on a species name in blue to see the plot for that species. In some cases, there is an error message and a plot, and in a few cases there is only an error message and no plot. We can look back at the data to see what is causing this later.
+
+### Gulf of Maine {.tabset}
+
+```{r, results='asis'}
+
+gomdat <- dietdat1 %>%     # make gomdat from dietdat1 with
+  filter(epu=="GOM",       # only Gulf of Maine
+         !is.na(relmsw))   # where `relmsw` is not NA
+
+gomyrs <- gomdat %>%                      # make gomyrs from gomdat
+  group_by(comname, season, prey) %>%     # for each species, season, and prey
+  count(year) %>%                         # count the number of years
+  summarise(nyear = sum(n))               # make nyear the sum of the number of years
+
+gomdat <- left_join(gomdat, gomyrs) %>%   # join gomdat and gomyrs to add the nyear variable
+  filter(nyear > 5)                       # keep only species/season combinations with >5 years
+
+preds <- unique(gomdat$comname)     # a list of predators for plotting
+
+for(i in 1:length(preds)) {                            # for each predator in the list
+  cat("  \n####",  as.character(preds[i]),"  \n")      # make a blue tab title
+  try(print(plotSpPreytrend(dat = gomdat, preds[i])))  # make the plot with the function
+  cat("  \n")                                          # add a blank line at the end
+}
+
+```
+
+
+### {-}
+
+### Georges Bank {.tabset}
+
+```{r, results='asis'}
+
+gbdat <- dietdat1 %>%
+  filter(epu=="GB",
+         !is.na(relmsw)) 
+
+gbyrs <- gbdat %>% 
+  group_by(comname, season, prey) %>% 
+  count(year) %>% 
+  summarise(nyear = sum(n))
+
+gbdat <- left_join(gbdat, gbyrs) %>%
+  filter(nyear > 5)
+
+preds <- unique(gbdat$comname)
+
+for(i in 1:length(preds)) {
+  cat("  \n####",  as.character(preds[i]),"  \n")
+  try(print(plotSpPreytrend(dat = gbdat, preds[i])))
+  cat("  \n")
+}
+```
+
+
+### {-}
+
+### Mid-Atlantic Bight {.tabset}
+
+```{r, results='asis'}
+
+mabdat <- dietdat1 %>%
+  filter(epu=="MAB",
+         !is.na(relmsw))
+
+mabyrs <- mabdat %>% 
+  group_by(comname, season, prey) %>% 
+  count(year) %>% 
+  summarise(nyear = sum(n))
+
+mabdat <- left_join(mabdat, mabyrs) %>%
+  filter(nyear > 5)
+
+preds <- unique(mabdat$comname)
+
+for(i in 1:length(preds)) {
+  cat("  \n####",  as.character(preds[i]),"  \n")
+  try(print(plotSpPreytrend(dat = mabdat, preds[i])))
+  cat("  \n")
+}
+```
+
+
+### {-}
+
+This preliminary set of plots may help us see which species to focus on later. Which seem to have trends, and which don't? Does it vary by area? Which have fairly constant diets over time and which are variable, even if they don't have trends?
+
+We can also run a similar analysis on the all-predators-combined diets that Brian is making.
