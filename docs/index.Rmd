@@ -11,3 +11,6 @@ output: html_document
 <a href="https://sgaichas.github.io/learnR-dietdata/BasicAnalyses.html" target="_blank"> Read in data, wrangle, visualize </a>
 
 <a href="https://sgaichas.github.io/learnR-dietdata/SimpleTrends.html" target="_blank"> Apply SOE trend analysis to prey categories for each predator </a>
+
+<a href="https://sgaichas.github.io/learnR-dietdata/AllPredTrends.html" target="_blank"> Apply SOE trend analysis to prey categories for all predators combined </a>
+

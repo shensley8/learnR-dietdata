@@ -1,0 +1,114 @@
+---
+title: "Trends across predators"
+author: "Sarah Gaichas"
+date: "7/12/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(here)
+```
+
+## Read in the aggregated predator data
+
+We'll download Brian's new dataset from the google drive. (You can also just download manually and place into the desired folder on your computer.)
+
+```{r fromgdrive, eval=FALSE}
+
+library(googledrive) #load the library that can work with googledrive
+library(here) #load the library that knows where my R project is on my computer
+
+# format is ("filenameongdrive", "where I want it to go", should I write over the local file if it is already there?
+
+drive_download("agg.pred.csv", here('data/agg.pred.csv'), overwrite = T)
+
+```
+
+Now we can read it into another R object, `aggdietdat`:
+
+```{r}
+aggdietdat <- read.csv(here('data/agg.pred.csv'))
+```
+
+There are some new columns, so we will find out the names:
+
+```{r}
+names(aggdietdat)
+```
+
+Brian has described the new columns for us (this is "metadata" for the dataset):
+
+>To keep things simple, I combined all of the data for the predators of interest.  Prey proportions are prey amount / total prey amount eaten as an average per individual.  The first data file(s) weighted the diet data by numbers of predators sampled per length and the total number of predators caught per tow which is more appropriate when considering predators separately.  In the file, the new columns include: 
+avepyamt (average prey amount g),  	rave_amt (unweighted %diet by mass),  	pyamtvar 	(variance for avepyamt), ci 	(95% ci for avepyamt), relci 	(95% ci for rave_amt), aveperpy (average prey percent),  	perfrq 	(percent freq of occurrence), freq
+ (frequency of prey occurrence), rave_amt2(rave_amt with nstom >=20). 
+ 
+Brian should confirm, but I think we want the column `rave_amt` as the equivalent of the metric we were using before.
+
+Since the column name has changed, I will write a new function to plot the trends. I can write a more general function that takes the column name as an argument so that it can be used with any appropriate data columns across datasets.
+
+See the [Simple trend analysis page](https://sgaichas.github.io/learnR-dietdata/SimpleTrends.html) for a fuller explanation of this approach. We will need the ecodata package for the trend analysis, which is a github-installed package, and also tidyverse.
+
+```{r, eval=FALSE}
+remotes::install_github("noaa-edab/ecodata",build_vignettes=TRUE)
+```
+
+
+```{r, message=FALSE}
+library(tidyverse)
+library(ecodata)
+```
+
+## An updated function to find and plot trends
+
+Here is a function to plot aggregate predator trends a given metric (by epu, season, and prey). The column name that we want to analyze needs to be passed in "quotes" for this to work (see below). 
+
+```{r}
+
+plotAggPreytrend <- function(dat, metric){   #defines the name of the function and the requied inputs
+  
+dat %>% 
+  filter(!is.na(.data[[metric]])) %>%          #take out the NA values (literally "not is NA")
+  ggplot(aes(x=year, y=.data[[metric]])) +     #year on x axis, %diet comp on y
+  geom_point()+                               #proportion in each year is a point
+  ecodata::geom_gls(aes(x=year, y=.data[[metric]]), warn = FALSE) + #prints lines if significant trend
+  ecodata::theme_facet() +                   #a simpler theme, easier to read
+  facet_grid(epu~season~prey,                 #separate by epu, season, and prey
+             labeller = labeller(.multi_line = FALSE)) +      #format labels              
+  theme(strip.text.x = element_text(size = 8)) +  #plot titles smaller
+  labs(y = "% diet composition")               #add sensible labels
+
+}   
+
+```
+
+Here are the combined prey trends for the Mid-Atlantic Bight `(epu=="MAB")`:
+
+```{r}
+plotAggPreytrend((aggdietdat%>%filter(epu=="MAB")), "rave_amt")
+```
+
+Here are the combined prey trends for Georges Bank `(epu=="GB")`:
+
+```{r}
+plotAggPreytrend((aggdietdat%>%filter(epu=="GB")), "rave_amt")
+```
+
+Here are the combined prey trends for the Gulf of Maine `(epu=="GOM")`:
+
+```{r}
+plotAggPreytrend((aggdietdat%>%filter(epu=="GOM")), "rave_amt")
+```
+
+And for completeness, the Scotian Shelf: 
+
+```{r}
+plotAggPreytrend((aggdietdat%>%filter(epu=="SS")), "rave_amt")
+```
+
+## Discussion
+
+What do you think of these trends?
+
+We can think about it and discuss further this week.
+
