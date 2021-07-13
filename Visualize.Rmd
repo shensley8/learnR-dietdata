@@ -1,0 +1,223 @@
+---
+title: "Improve visualizations"
+author: "Sarah Gaichas"
+date: "7/13/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Communicating diet composition and trends
+
+Diet information is complicated, with lots of components. Showing a complex thing changing over time can be even more complicated. Here are some trial plots using the datasets we already have attempting to simplify the message for the audience, without loss of information. 
+
+### Diet composition
+
+We can start with our more simple diet compositions which use only four prey categories: benthic invertebrates (BENINV), fish (FISH), pelagic invertebrates (PELINV), and other prey (OTHER). Here we read in the two datasets with these simpler prey categories, using more descriptive names than before to make our code clearer in these comparisons:
+
+```{r, message=FALSE}
+library(here)
+library(tidyverse)
+library(ecodata)
+library(patchwork)
+
+preddiet4prey <- read.csv(here('data/allwt2.csv')) #diet for individual predators
+
+aggdiet4prey <- read.csv(here('data/agg.pred.csv')) #aggregated diet across all predators
+
+```
+
+We will define the colors used for the prey categories and use them consistently throughout the analyses:
+
+```{r}
+
+preycol <- c(  #make object preycol by combining this list of hex codes
+  "#3b6100",
+  "#6481fc",
+  "#6ce87e",
+  "#c152c1")
+
+```
+
+We will need to have a full list of which prey are included in each category, because this question will inevitably come up.
+
+Our initial plots for diet composition show the percent of each category in the diet each year as a stacked bar plot. 
+
+Here is the function that makes that plot. I've generalized it so it can be used for both the individual and aggregated datasets. That means the species will need to be defined by filtering the input data, and the epu and or season can also optionally be filtered at that step. I've also reordered seasons more intuitively to have spring first and fall second, and epus to be arranged from north to south with Scotian Shelf SS first, then Gulf of Maine GOM, Georges Bank GB, and Mid-Atlantic Bight MAB:
+
+```{r}
+
+plotDietCompBar <- function(dat, metric, title=NULL){   #defines the name of the function and the requied inputs
+  
+dat %>% 
+  filter(!is.na(.data[[metric]])) %>%          #take out the NA values (literally "not is NA")
+  ggplot(aes(x=year, y=.data[[metric]], fill=prey)) +     #year on x axis, %diet comp on y
+  geom_bar(width = 1, stat = "identity") +    #stacked bar chart
+  scale_fill_manual(values=preycol) +         #custom colors
+  ecodata::theme_facet() +                    #simplify
+  facet_grid(fct_relevel(epu, "SS", "GOM", "GB", "MAB")~
+               fct_relevel(season, "SPRING", "FALL")) + #separate by ordered epu and season
+  labs(y = "% diet composition",              #add sensible labels
+       title = title) 
+    
+}   
+
+```
+
+Here is a test with aggregated predators:
+
+```{r}
+plotDietCompBar(dat=aggdiet4prey, metric="rave_amt", title="Test All")
+```
+
+Here is a figure with only one season and two EPUs for aggregated predators:
+
+```{r}
+plotDietCompBar(dat=aggdiet4prey%>%filter(season=="SPRING", epu %in% c("GOM", "GB")), 
+                metric="rave_amt", 
+                title="All predators combined, Spring, New England")
+```
+
+Another example with a single season and EPU for aggregated predators:
+
+```{r}
+plotDietCompBar(dat=aggdiet4prey%>%filter(season=="FALL", epu %in% c("MAB")), 
+                metric="rave_amt", 
+                title="All predators combined, Fall, Mid-Atlantic")
+```
+
+Here is a test with an individual predator using the same function. Note that the filter statement includes the predator name:
+
+```{r}
+plotDietCompBar(dat=preddiet4prey%>%filter(comname=="SUMMER FLOUNDER"), 
+                metric="relmsw", 
+                title="Summer Flounder")
+```
+
+### Trends
+
+Here is a new trends plot function that re-orients the prey percent plots into a column (similar to a stacked bar plot), uses the same set of colors for the prey, and can also be used on either dataset.
+
+```{r}
+plotPreytrend <- function(dat, metric, title=NULL){   #defines the name of the function and the requied inputs
+  
+dat %>% 
+  filter(!is.na(.data[[metric]])) %>%          #take out the NA values (literally "not is NA")
+  ggplot(aes(x=year, y=.data[[metric]], colour=prey)) +     #year on x axis, %diet comp on y
+  geom_point(alpha=0.5) +                              #proportion in each year is a point
+  scale_colour_manual(values=preycol) +          #custom colors
+  ecodata::geom_gls(aes(x=year, y=.data[[metric]]), warn = FALSE) + #prints lines if significant trend
+  ecodata::theme_facet() +                   #a simpler theme, easier to read
+  facet_grid(fct_relevel(epu, "SS", "GOM", "GB", "MAB")~prey~
+             fct_relevel(season, "SPRING", "FALL"),                 #separate by epu, season, and prey
+             labeller = labeller(.multi_line = FALSE)) +      #format labels              
+  theme(strip.text.x = element_text(size = 8)) +  #plot titles smaller
+  labs(y = "% diet composition",
+       title = title)               #add sensible labels
+
+}   
+```
+
+Test the trend plot for all predators combined. This is a bit much, but it does what we tell it:
+
+```{r, fig.height=11, fig.width=8}
+plotPreytrend(dat=aggdiet4prey, metric="rave_amt", title="Test All")
+```
+
+A smaller subset is easier to look at:
+
+```{r}
+plotPreytrend(dat=aggdiet4prey%>%filter(season=="SPRING", epu %in% c("GOM", "GB")), 
+                metric="rave_amt", 
+                title="All predators combined, Spring, New England")
+```
+
+To plot the areas side by side we need two function calls:
+
+```{r}
+
+p1 <- plotPreytrend(dat=aggdiet4prey%>%filter(season=="SPRING", epu %in% c("GOM")), 
+                metric="rave_amt", 
+                title="All predators, Gulf of Maine")
+
+p2 <- plotPreytrend(dat=aggdiet4prey%>%filter(season=="SPRING", epu %in% c("GB")), 
+                metric="rave_amt", 
+                title="All predators, Georges Bank")
+
+p1 + p2 + plot_layout(guides = 'collect', ncol = 2)
+```
+
+But probably best if it is one area, possibly two seasons:
+
+```{r}
+plotPreytrend(dat=aggdiet4prey%>%filter(epu %in% c("MAB")), 
+                metric="rave_amt", 
+                title="All predators combined, Mid-Atlantic")
+```
+
+And the function can be applied to individual predators as well:
+
+```{r}
+plotPreytrend(dat=preddiet4prey%>%filter(comname=="SUMMER FLOUNDER",
+                                         epu=="MAB"), 
+                metric="relmsw", 
+                title="Summer Flounder in the Mid-Atlantic")
+```
+
+
+### Combining plots
+
+Perhaps we can put the composition plots next to the trends for each species to make it clear what we are seeing.
+
+```{r}
+p1 <- plotDietCompBar(dat=aggdiet4prey%>%filter(season=="FALL", epu %in% c("MAB")), 
+                metric="rave_amt", 
+                title="Full diet composition")
+
+p2 <- plotPreytrend(dat=aggdiet4prey%>%filter(season=="FALL", epu %in% c("MAB")), 
+                metric="rave_amt", 
+                title="Trends in components")
+
+p1 + p2 + plot_layout(widths = c(4, 3), guides = 'collect') + plot_annotation(
+  title = 'All predators combined, Mid-Atlantic in Fall')
+```
+
+We may still want to adjust the colors; the purple for PELINV is too similar to the purple line inidicating a significant downward trend.
+
+## All predators combined {.tabset}
+
+Side-by-side plots for each region are in the tabs below (under construction...).
+
+```{r, results='asis'}
+
+areas <- unique(aggdiet4prey$epu)
+times <- unique(aggdiet4prey$season)
+
+for(a in areas){
+  for(t in times){
+    p1 <- plotDietCompBar(dat=aggdiet4prey%>%filter(season==t, epu==a), 
+                          metric="rave_amt", 
+                          title="Full diet composition")
+    
+    p2 <- plotPreytrend(dat=aggdiet4prey%>%filter(season==t, epu==a), 
+                        metric="rave_amt", 
+                        title="Trends in components")
+    cat("  \n###",  as.character(a),", ",  as.character(t),"  \n")
+    print(p1 + p2 + plot_layout(widths = c(4, 3), guides = 'collect') + plot_annotation(
+      title = paste0('All predators combined, ',a, ", ",t)))
+    cat("  \n")   
+  }
+}
+
+```
+
+
+## {-}
+
+## Selected individual predators {.tabset}
+
+Side-by-side plots for a few predators and regions are in the tabs below (under construction...)
+
+## {-}
