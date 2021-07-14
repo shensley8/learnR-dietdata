@@ -6,7 +6,9 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,
+                      warning = FALSE,
+                      message = FALSE)
 ```
 
 ## Communicating diet composition and trends
@@ -38,6 +40,11 @@ preycol <- c(  #make object preycol by combining this list of hex codes
   "#6481fc",
   "#6ce87e",
   "#c152c1")
+
+preycolcode <- data.frame(prey=unique(aggdiet4prey$prey),
+                          preycol=c(preycol, NA))
+
+
 
 ```
 
@@ -103,16 +110,31 @@ Here is a new trends plot function that re-orients the prey percent plots into a
 ```{r}
 plotPreytrend <- function(dat, metric, title=NULL){   #defines the name of the function and the requied inputs
   
+#  # Outline colours 
+# preycolcode <- data.frame(prey=unique(dat$prey),
+#                           preycol=c(preycol)) %>%
+#   filter(!is.na(prey))
+# 
+# 
+# # Points defining square region for background 
+# square <- with(dat, data.frame( 
+#   x = c(-Inf, Inf, Inf, -Inf), 
+#   y = c(-Inf, -Inf, Inf, Inf)
+#   ))
+
 dat %>% 
   filter(!is.na(.data[[metric]])) %>%          #take out the NA values (literally "not is NA")
-  ggplot(aes(x=year, y=.data[[metric]], colour=prey)) +     #year on x axis, %diet comp on y
-  geom_point(alpha=0.5) +                              #proportion in each year is a point
-  scale_colour_manual(values=preycol) +          #custom colors
+  ggplot(aes(x=year, y=.data[[metric]])) +     #year on x axis, %diet comp on y , colour=prey)
+  #geom_rect(data=preyname, aes(xmin=-Inf, xmax=Inf, ymin=-Inf, ymax=Inf), fill=prey, alpha=0.2) +    
+  #geom_polygon(data = merge(preycolcode, square), aes(x = x, y = y, color = preycol, fill = NA)) + 
+  geom_point() +    #proportion in each year is a point
+  #scale_colour_manual(values=preycol) +          #custom point colors
   ecodata::geom_gls(aes(x=year, y=.data[[metric]]), warn = FALSE) + #prints lines if significant trend
   ecodata::theme_facet() +                   #a simpler theme, easier to read
   facet_grid(fct_relevel(epu, "SS", "GOM", "GB", "MAB")~prey~
              fct_relevel(season, "SPRING", "FALL"),                 #separate by epu, season, and prey
-             labeller = labeller(.multi_line = FALSE)) +      #format labels              
+             labeller = labeller(.multi_line = FALSE)) +      #format labels 
+  scale_fill_manual(values=preycol, breaks=NULL) +
   theme(strip.text.x = element_text(size = 8)) +  #plot titles smaller
   labs(y = "% diet composition",
        title = title)               #add sensible labels
@@ -122,7 +144,7 @@ dat %>%
 
 Test the trend plot for all predators combined. This is a bit much, but it does what we tell it:
 
-```{r, fig.height=11, fig.width=8}
+```{r, fig.height=18, fig.width=8}
 plotPreytrend(dat=aggdiet4prey, metric="rave_amt", title="Test All")
 ```
 
