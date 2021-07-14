@@ -1,7 +1,7 @@
 ---
 title: "Improve visualizations"
 author: "Sarah Gaichas"
-date: "7/13/2021"
+date: "7/14/2021"
 output: html_document
 ---
 
@@ -42,7 +42,8 @@ preycol <- c(  #make object preycol by combining this list of hex codes
   "#c152c1")
 
 preycolcode <- data.frame(prey=unique(aggdiet4prey$prey),
-                          preycol=c(preycol, NA))
+                          preycol=c(preycol, NA)) %>%
+  filter(!is.na(prey))
 
 
 
@@ -110,31 +111,20 @@ Here is a new trends plot function that re-orients the prey percent plots into a
 ```{r}
 plotPreytrend <- function(dat, metric, title=NULL){   #defines the name of the function and the requied inputs
   
-#  # Outline colours 
-# preycolcode <- data.frame(prey=unique(dat$prey),
-#                           preycol=c(preycol)) %>%
-#   filter(!is.na(prey))
-# 
-# 
-# # Points defining square region for background 
-# square <- with(dat, data.frame( 
-#   x = c(-Inf, Inf, Inf, -Inf), 
-#   y = c(-Inf, -Inf, Inf, Inf)
-#   ))
-
 dat %>% 
   filter(!is.na(.data[[metric]])) %>%          #take out the NA values (literally "not is NA")
   ggplot(aes(x=year, y=.data[[metric]])) +     #year on x axis, %diet comp on y , colour=prey)
-  #geom_rect(data=preyname, aes(xmin=-Inf, xmax=Inf, ymin=-Inf, ymax=Inf), fill=prey, alpha=0.2) +    
-  #geom_polygon(data = merge(preycolcode, square), aes(x = x, y = y, color = preycol, fill = NA)) + 
-  geom_point() +    #proportion in each year is a point
-  #scale_colour_manual(values=preycol) +          #custom point colors
+  geom_rect(aes(xmin=-Inf, xmax=Inf, ymin=-Inf, ymax=Inf, 
+                colour = prey, fill = NA, size=2), #for background, fill=prey, alpha=0.006
+                show.legend = FALSE) + #prey color outline
+  scale_colour_manual(values=preycol) +          #custom outline colors
+  geom_point(color="black") +    #proportion in each year is a point
   ecodata::geom_gls(aes(x=year, y=.data[[metric]]), warn = FALSE) + #prints lines if significant trend
-  ecodata::theme_facet() +                   #a simpler theme, easier to read
+  ecodata::theme_facet() +  #can we adjust this?
   facet_grid(fct_relevel(epu, "SS", "GOM", "GB", "MAB")~prey~
              fct_relevel(season, "SPRING", "FALL"),                 #separate by epu, season, and prey
              labeller = labeller(.multi_line = FALSE)) +      #format labels 
-  scale_fill_manual(values=preycol, breaks=NULL) +
+  scale_fill_manual(values=preycol, breaks=NULL) + #custom fill colors, only needed if filled rect
   theme(strip.text.x = element_text(size = 8)) +  #plot titles smaller
   labs(y = "% diet composition",
        title = title)               #add sensible labels
@@ -150,7 +140,7 @@ plotPreytrend(dat=aggdiet4prey, metric="rave_amt", title="Test All")
 
 A smaller subset is easier to look at:
 
-```{r}
+```{r, fig.height=8, fig.width=8}
 plotPreytrend(dat=aggdiet4prey%>%filter(season=="SPRING", epu %in% c("GOM", "GB")), 
                 metric="rave_amt", 
                 title="All predators combined, Spring, New England")
@@ -206,11 +196,33 @@ p1 + p2 + plot_layout(widths = c(4, 3), guides = 'collect') + plot_annotation(
   title = 'All predators combined, Mid-Atlantic in Fall')
 ```
 
-We may still want to adjust the colors; the purple for PELINV is too similar to the purple line inidicating a significant downward trend.
+We may still want to adjust the colors; the purple for PELINV is too similar to the purple line inidicating a significant downward trend. Update: I've added a box around the plot with the prey colors instead of trying to color the points or shade the background. 
+
+A function for changing defaul legend size, courtesy https://stackoverflow.com/questions/52297978/decrease-overal-legend-size-elements-and-text: 
+
+```{r}
+addSmallLegend <- function(myPlot, pointSize = 2, textSize = 8, spaceLegend = 0.5) {
+    myPlot +
+        guides(shape = guide_legend(override.aes = list(size = pointSize)),
+               color = guide_legend(override.aes = list(size = pointSize))) +
+        theme(legend.title = element_text(size = textSize), 
+              legend.text  = element_text(size = textSize),
+              legend.key.size = unit(spaceLegend, "lines"))
+}
+```
+
+
+Try reducing legend size for the dual plot:
+
+```{r}
+addSmallLegend(p1) + p2 + plot_layout(widths = c(1,1), guides = 'collect') + plot_annotation(
+  title = 'All predators combined, Mid-Atlantic in Fall') 
+
+```
 
 ## All predators combined {.tabset}
 
-Side-by-side plots for each region are in the tabs below (under construction...).
+Side-by-side plots for each region are in the tabs below (under construction, comments welcome).
 
 ```{r, results='asis'}
 
@@ -226,9 +238,11 @@ for(a in areas){
     p2 <- plotPreytrend(dat=aggdiet4prey%>%filter(season==t, epu==a), 
                         metric="rave_amt", 
                         title="Trends in components")
-    cat("  \n###",  as.character(a),", ",  as.character(t),"  \n")
-    print(p1 + p2 + plot_layout(widths = c(4, 3), guides = 'collect') + plot_annotation(
-      title = paste0('All predators combined, ',a, ", ",t)))
+    cat("  \n###",  as.character(a), as.character(t),"  \n")
+    print(addSmallLegend(p1) + 
+            p2 + 
+            plot_layout(widths = c(4, 4), guides = 'collect') + 
+            plot_annotation(title = paste0('All predators combined, ',a,", ",t)))
     cat("  \n")   
   }
 }
@@ -238,8 +252,54 @@ for(a in areas){
 
 ## {-}
 
-## Selected individual predators {.tabset}
+## Individual predators {.tabset}
 
-Side-by-side plots for a few predators and regions are in the tabs below (under construction...)
+Side-by-side plots for individual predators and regions are in the tabs below (under construction, comments welcome)
+
+```{r, results='asis'}
+
+#before plotting, weed out predators with <5 years of data in any area or season
+datyrs <- preddiet4prey %>%                   # make datyears from full dataset
+  filter(!is.na(relmsw)) %>%              # take out NA data
+  group_by(comname, epu, season, prey) %>%     # for each species, season, and prey
+  count(year) %>%                         # count the number of years
+  summarise(nyear = sum(n))               # make nyear the sum of the number of years
+
+preddiet4prey5yrs <- left_join(preddiet4prey, datyrs) %>%   # join to add the nyear variable
+  group_by(comname, epu, season, prey) %>%
+  filter(nyear > 5)                       # keep only species/season combinations with >5 years
+
+
+areas <- unique(preddiet4prey5yrs$epu)
+times <- unique(preddiet4prey5yrs$season)
+preds <- unique(preddiet4prey5yrs$comname)
+
+for(a in areas){
+  for(t in times){
+    for(p in preds){
+      
+      if(dim(preddiet4prey5yrs%>%filter(season==t, epu==a, comname==p))[1]>0){
+        p1 <- plotDietCompBar(dat=preddiet4prey5yrs%>%filter(season==t, epu==a,
+                                                                 comname==p), 
+                                  metric="relmsw", 
+                                  title="Full diet composition")
+        
+        p2 <- plotPreytrend(dat=preddiet4prey5yrs%>%filter(season==t, epu==a,
+                                                               comname==p), 
+                                metric="relmsw", 
+                                title="Trends in components")
+        cat("  \n###",  as.character(a), as.character(t), as.character(p),"  \n")
+        try(print(addSmallLegend(p1) + 
+                p2 + 
+                plot_layout(widths = c(4, 4), guides = 'collect') + 
+                plot_annotation(title = paste0(p,", ",a,", ",t))))
+        cat("  \n")   
+      }
+    }
+  }
+}
+
+```
+
 
 ## {-}
