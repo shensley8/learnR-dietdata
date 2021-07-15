@@ -1,0 +1,363 @@
+---
+title: "Explaining trends"
+author: "Sarah Gaichas"
+date: "7/15/2021"
+output:
+  html_document:
+    code_fold: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      warning = FALSE,
+                      message = FALSE)
+```
+
+## Big picture diet trends by area and season
+
+We can start with our more simple diet compositions which use only four prey categories: benthic invertebrates (BENINV), fish (FISH), pelagic invertebrates (PELINV), and other prey (OTHER). Here we read in the two datasets with these simpler prey categories, using more descriptive names than before to make our code clearer in these comparisons:
+
+```{r, message=FALSE}
+library(here)
+library(tidyverse)
+library(ecodata)
+library(patchwork)
+library(ggiraph)
+
+preddiet4prey <- read.csv(here('data/allwt2.csv')) #diet for individual predators
+
+aggdiet4prey <- read.csv(here('data/agg.pred.csv')) #aggregated diet across all predators
+
+```
+
+We will define the colors used for the prey categories and use them consistently throughout the analyses. These can be changed here and carried through all subsequent plots:
+
+```{r}
+#from http://medialab.github.io/iwanthue/ using 10 categories, colorblind friendly
+
+preycol <- c(  #make object preycol by combining this list of hex codes
+  "#3b6100",
+  "#6481fc",
+  "#6ce87e",
+  "#c152c1")
+
+preycolcode <- data.frame(prey=unique(aggdiet4prey$prey),
+                          preycol=c(preycol, NA)) %>%
+  filter(!is.na(prey))
+
+
+
+```
+
+
+### Prey categories; what and why?
+
+The full list of which prey included in each category is in `SASPREY12.xlsx`, so we can keep that handy because this question will inevitably come up.
+
+Each category can be described in general:
+
+BENINV includes prey that are clearly identifiable as benthic (bottom dwelling) invertebrates by either name or general taxoomic category. Similarly, PELINV includes prey clearly identifiable as pelagic (water column dwelling) invertebrates, including some shrimp species that spend much time in the water column.
+
+FISH includes all fish, whether identified as individual species or as a taxonmic category, or "unidentified fish." The FISH category also includes the commercially fished squid species, *Illex* and *Doryteuthis* (formerly *Loligo*). 
+
+OTHER includes everything that could not be placed into one of the above categories; for example, "unidentified invertebrates," taxonomic categories that could be either benthic or pelagic, digested animal remains, plant material, etc.
+
+The BENINV, FISH, and PELINV general categories represent different components of energy flow in ecosystems (or differential sampling if predators that specialize in each category). How can we best explain this to managers? 
+
+What will we look for to distinguish a change in the ecosystem (either prey availability or shifts in abundance of different sizes or species of predators) from something to do with our way of observering the system (changing our survey sampling over time)?
+
+
+### Plots  
+Our initial plots for diet composition show the percent of each category in the diet each year as a stacked bar plot. The trend plots are alongside, with each prey category trend plot stacked in the same order.
+
+#### Diet composition plot function
+Here is the function that makes a diet composition plot. Seasons have spring first and fall second, and epus are be arranged from north to south with Scotian Shelf SS first, then Gulf of Maine GOM, Georges Bank GB, and Mid-Atlantic Bight MAB:
+
+```{r}
+
+plotDietCompBar <- function(dat, metric, title=NULL){   #defines the name of the function and the requied inputs
+  
+dat %>% 
+  filter(!is.na(.data[[metric]])) %>%          #take out the NA values (literally "not is NA")
+  ggplot(aes(x=year, y=.data[[metric]], fill=prey)) +     #year on x axis, %diet comp on y
+  geom_bar(width = 1, stat = "identity") +    #stacked bar chart
+  scale_fill_manual(values=preycol) +         #custom colors
+  ecodata::theme_facet() +                    #simplify
+  facet_grid(fct_relevel(epu, "SS", "GOM", "GB", "MAB")~
+               fct_relevel(season, "SPRING", "FALL")) + #separate by ordered epu and season
+  labs(y = "% diet composition",              #add sensible labels
+       title = title) 
+    
+}   
+
+```
+
+#### Trend plot function
+Here is a new trends plot function that re-orients the prey percent plots into a column (similar to a stacked bar plot), uses the same set of colors for the prey, and can also be used on the all predators or individual predators datasets.
+
+```{r}
+plotPreytrend <- function(dat, metric, title=NULL, color=TRUE, ylab="% diet composition"){   #defines the name of the function and the required inputs
+  
+dat %>% 
+  filter(!is.na(.data[[metric]])) %>%          #take out the NA values (literally "not is NA")
+  ggplot(aes(x=year, y=.data[[metric]])) +     #year on x axis, %diet comp on y , colour=prey)
+  {if(color)geom_rect(aes(xmin=-Inf, xmax=Inf, ymin=-Inf, ymax=Inf, 
+                colour = prey, fill = NA), #for background, fill=prey, alpha=0.006
+                size=2, show.legend = FALSE)} + #prey color outline
+  scale_colour_manual(values=preycol) +          #custom outline colors
+  geom_point(color="black") +    #proportion in each year is a point
+  ecodata::geom_gls(aes(x=year, y=.data[[metric]]), warn = FALSE) + #prints lines if significant trend
+  ecodata::theme_facet() +  #can we adjust this?
+  facet_grid(fct_relevel(epu, "SS", "GOM", "GB", "MAB")~prey~
+             fct_relevel(season, "SPRING", "FALL"),                 #separate by epu, season, and prey
+             labeller = labeller(.multi_line = FALSE)) +      #format labels 
+  scale_fill_manual(values=preycol, breaks=NULL) + #custom fill colors, only needed if filled rect
+  theme(strip.text.x = element_text(size = 8)) +  #plot titles smaller
+  labs(y = ylab,
+       title = title)               #add sensible labels
+
+}   
+```
+
+Also we use this function for changing default legend size, courtesy https://stackoverflow.com/questions/52297978/decrease-overal-legend-size-elements-and-text: 
+
+```{r}
+addSmallLegend <- function(myPlot, pointSize = 2, textSize = 8, spaceLegend = 0.5) {
+    myPlot +
+        guides(shape = guide_legend(override.aes = list(size = pointSize)),
+               color = guide_legend(override.aes = list(size = pointSize))) +
+        theme(legend.title = element_text(size = textSize), 
+              legend.text  = element_text(size = textSize),
+              legend.key.size = unit(spaceLegend, "lines"))
+}
+```
+
+### All predator plots by area and season {.tabset}
+
+Side-by-side plots for each region are in the tabs below. Any significant trends are shown using the standard State of the Ecosystem format: orange lines indicate a significant increasing trend and purple lines indicate a significant decreasing trend:
+
+```{r, results='asis'}
+
+areas <- unique(aggdiet4prey$epu)
+times <- unique(aggdiet4prey$season)
+
+for(a in areas){
+  for(t in times){
+    p1 <- plotDietCompBar(dat=aggdiet4prey%>%filter(season==t, epu==a), 
+                          metric="rave_amt", 
+                          title="Full diet composition")
+    
+    p2 <- plotPreytrend(dat=aggdiet4prey%>%filter(season==t, epu==a), 
+                        metric="rave_amt", 
+                        title="Trends in components")
+    cat("  \n####",  as.character(a), as.character(t),"  \n")
+    print(addSmallLegend(p1) + 
+            p2 + 
+            plot_layout(widths = c(4, 4), guides = 'collect') + 
+            plot_annotation(title = paste0('All predators combined, ',a,", ",t)))
+    cat("  \n")   
+  }
+}
+
+```
+
+### {-}
+
+## What trends do we see?
+We don't see any significant trends in prey during the spring season for any area. We see some significant trends during fall. Scotian Shelf, Georges Bank, and Gulf of Maine all have significant declines in the OTHER prey category in fall. The Mid-Atlantic and Gulf of Maine have significant declines in the PELINV prey category in fall. The Mid-Atlantic also has significant patterns in BENINV and FISH prey categories in fall, showing nearly opposite curves; FISH are increasing overall as prey and BENINV are decreasing as prey in the Mid-Atlantic in fall.
+
+## What might be causing observed trends?
+Ecological causes of the observed trends could be a change in the size of predators overall in the Mid-Atlantic, or a change in diet by one or more particularly influential individual predators. 
+
+### Are predators changing size overall?
+Larger predators might eat fish more often than benthic or pelagic invertebrates, because many fish eat more fish prey as they get larger. 
+
+To evaluate whether there is a change in predator size over time, we can look at the aggregate predator average length: `meanlen` column in the aggregate dataset. (We can use the same plot function for an individual prey because mean length is repeated for each.)
+
+```{r}
+plotPreytrend(aggdiet4prey%>%filter(prey=="OTHER"), "meanlen", title="Average length of all sampled predators", color=FALSE, ylab = "mean length (cm)")
+```
+
+We see a significant decline in predator size over time for the Scotian Shelf and Gulf of Maine.
+
+There is no significant trend in predator size over time for Georges Bank or the Mid-Atlantic.
+
+We can also look at average predator weight:
+```{r}
+plotPreytrend(aggdiet4prey%>%filter(prey=="OTHER"), "meanwgt", title="Average weight of all sampled predators", color=FALSE, ylab = "mean weight (g)")
+```
+
+Average predator weight has decreased on the Scotian Shelf over time in both seasons and in the Gulf of Maine in spring, but shows no trends in other areas or seasons.
+
+We can also look at the number of stomachs in the aggregate predator dataset:
+```{r}
+plotPreytrend(aggdiet4prey%>%filter(prey=="OTHER"), "nstom", title="Number of stomachs from all sampled predators", color=FALSE, ylab = "stomachs (n)")
+```
+
+The number of stomachs sampled from all predators combined has increased over time for both seasons and all regions.
+
+### Are certain predators driving the trends?
+Perhaps one or two predators dominate the aggregated predators if they represent a large proportion of stomachs sampled.
+
+To evaluate predator influence, we look at how many stomachs for each predator are in the individual predator diet dataset. This plot gives the top 2 sampled predators in each year, area, and season by proportion of total stomachs. 
+
+```{r}
+
+nstomtot <- preddiet4prey %>%
+  filter(season %in% c("SPRING", "FALL"),  #only seasons in agg dataset
+         prey=="OTHER") %>%                #info repeated for all prey
+  group_by(year, season, epu) %>% # for each year/season/epu combo
+  summarise(totstoms = sum(nstom, na.rm = TRUE))  # sum the stomachs
+  
+
+nstompred <- preddiet4prey %>% # a pipe operator that strings the commands together
+  filter(season %in% c("SPRING", "FALL"),  #only seasons in agg dataset
+         prey=="OTHER") %>%                #info repeated for all prey
+  group_by(comname, year, season, epu) %>% # for each pred/year/season/epu combo
+  summarise(annstoms = sum(nstom, na.rm = TRUE)) %>% # sum the stomachs
+  left_join(nstomtot) %>%                  #add total stomachs
+  mutate(propstoms = annstoms/totstoms) %>%
+  group_by(year, season, epu) %>%
+  slice_max(order_by = propstoms, n=2) #old dplyr top_n(n = 3, wt = annstoms)
+
+```
+
+The sampling has changed over time. A few predators dominated the number of stomachs collected prior to about 2000; after that the number of stomachs sampled was more evenly distributed across a larger number of predators.
+
+Even if we only keep the top 2 sampled predators for each year, season, and region, we still have a list of 35 predators! This makes colors the same for predators across separate plots:
+
+```{r predcol}
+# again from http://medialab.github.io/iwanthue/ All colors colorspace, colorblind friendly, hard
+
+predcol <- c("#00495d",
+"#3ac100",
+"#a646f7",
+"#72ff75",
+"#8d00a6",
+"#c6ff90",
+"#0268f1",
+"#ff8d23",
+"#0144a6",
+"#01a249",
+"#e1009e",
+"#abffe1",
+"#7e0082",
+"#fffdd4",
+"#24001c",
+"#bbf6ff",
+"#a60029",
+"#0176c8",
+"#8a4700",
+"#a083ff",
+"#454400",
+"#ff7fff",
+"#005d35",
+"#c9005e",
+"#00483e",
+"#ff96e4",
+"#291d00",
+"#d5a5ff",
+"#2e0400",
+"#ffc5d6",
+"#00285f",
+"#ffbb88",
+"#4a002e",
+"#ff8092",
+"#68001a")
+
+names(predcol) <- as.factor(unique(nstompred$comname))
+
+```
+
+```{r}
+ggplot(nstompred, aes(x=year, y=propstoms, fill=comname)) +
+  geom_bar(width = 1, stat = "identity", show.legend = FALSE)+
+  scale_fill_manual(values=predcol) +         #custom colors
+  facet_grid(epu~season)+
+  ecodata::theme_facet()
+```
+
+### Top individual predators {.tabset}
+We can see the predator list that includes the top 2 sampled predators in each year for each area and season: 
+
+```{r, results='asis'}
+
+areas <- unique(aggdiet4prey$epu)
+times <- unique(aggdiet4prey$season)
+
+for(a in areas){
+  for(t in times){
+    
+    dat <- nstompred %>% filter(epu==a, season==t)
+    
+    cat("  \n####",  as.character(a), as.character(t),"  \n")
+    print(addSmallLegend(ggplot(dat, aes(x=year, y=propstoms, fill=comname)) +
+                               geom_bar(width = 0.9, stat = "identity")+
+                               #geom_bar_interactive(width = 0.9, stat = "identity",
+                               #                     aes(tooltip = comname, data_id = comname))+
+                               scale_fill_manual(values=predcol) +         #custom colors
+                               facet_grid(season~epu)+
+                               ecodata::theme_facet()
+                         ) + 
+      plot_annotation(title = paste0('Top predators, ',a,", ",t))
+      )
+    cat("  \n")   
+  }
+}
+```
+
+### {-}
+
+There isn't one dominantly sampled predator over time, so it would be difficult to say that any single predator was driving the aggregate trends.
+
+This does show that different predators contribute to the aggregate trends across areas and seasons.
+
+### Are certain predator categories driving the trends?
+If we see shifts in benthic, pelagic, or fish prey, is this because we have sampled types of predators differently over time (rather than individual species)?
+
+We can classify the predators by major prey as benthivores, planktivores, and piscivores to see if any of these categories dominate the number of stomachs over time. We can use the ecodata species categories for this, but Brian should double check for correctness.
+
+```{r}
+
+groups <- ecodata::species_groupings %>% #this is the table we use for the SOE
+  select(SVSPP, COMNAME, SOE.20) 
+
+names(groups) <- tolower(names(groups))
+
+nstomgroup <- preddiet4prey %>% # a pipe operator that strings the commands together
+  filter(season %in% c("SPRING", "FALL"),  #only seasons in agg dataset
+         prey=="OTHER") %>%                #info repeated for all prey
+  left_join(groups) %>%                    #add category
+  group_by(soe.20, year, season, epu) %>% # for each pred/year/season/epu combo
+  summarise(annstoms = sum(nstom, na.rm = TRUE)) 
+
+ggplot(nstomgroup, aes(x=year, y=annstoms, fill=soe.20)) +
+  geom_bar(width = 1, stat = "identity", position="fill")+
+  facet_grid(epu~season)+
+  ecodata::theme_facet()+
+  labs(title = "Proportion of stomachs by predator category")               #add sensible labels
+
+```
+Looks like the proportion of piscivores was dominant for much of the 1980s and 1990s, and the proportion benthivores has been higher and more consistent in all areas and seasons since about 2000.
+
+```{r}
+
+ggplot(nstomgroup, aes(x=year, y=annstoms, fill=soe.20)) +
+  geom_bar(width = 1, stat = "identity") +
+  facet_grid(epu~season)+
+  ecodata::theme_facet()+
+  labs(title = "Number of stomachs by predator category")
+
+```
+
+
+Does this give any insight into our trends?
+
+## Trends for key species
+
+Based on the  plots above with the top sampled species in each region, can you see any individual species that we should look at?
+
+What might be the most important individual species to evaluate, and why?
+
+## What would we do next, given more time?
+

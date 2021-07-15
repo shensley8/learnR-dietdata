@@ -16,3 +16,7 @@ output: html_document
 
 <a href="https://sgaichas.github.io/learnR-dietdata/Visualize.html" target="_blank"> Working on different plot configurations </a>
 
+<a href="https://sgaichas.github.io/learnR-dietdata/ExplainTrends.html" target="_blank"> Working through sequence of questions </a>
+
+
+
