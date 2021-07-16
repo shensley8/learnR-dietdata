@@ -1,7 +1,7 @@
 ---
 title: "Explaining trends"
 author: "Sarah Gaichas"
-date: "7/15/2021"
+date: "7/16/2021"
 output:
   html_document:
     code_fold: hide
@@ -269,12 +269,17 @@ names(predcol) <- as.factor(unique(nstompred$comname))
 
 ```
 
+And this makes a plot where you can hover your cursor to see the species name for a bar across all areas and seasons:
+
 ```{r}
-ggplot(nstompred, aes(x=year, y=propstoms, fill=comname)) +
-  geom_bar(width = 1, stat = "identity", show.legend = FALSE)+
+p <- ggplot(nstompred, aes(x=year, y=propstoms, fill=comname)) +
+  geom_bar_interactive(width = 1, stat = "identity", show.legend = FALSE,
+                       aes(tooltip = comname, data_id = comname))+
   scale_fill_manual(values=predcol) +         #custom colors
   facet_grid(epu~season)+
   ecodata::theme_facet()
+
+ggiraph(code=print(p))
 ```
 
 ### Top individual predators {.tabset}
@@ -282,28 +287,32 @@ We can see the predator list that includes the top 2 sampled predators in each y
 
 ```{r, results='asis'}
 
-areas <- unique(aggdiet4prey$epu)
-times <- unique(aggdiet4prey$season)
+plist = lapply(split(nstompred, list(nstompred$epu, nstompred$season)), function (d){
+  addSmallLegend(ggplot(d, aes(x=year, y=propstoms, fill=comname)) +
+                   #geom_bar(width = 0.9, stat = "identity")+
+                   geom_bar_interactive(width = 0.9, stat = "identity",
+                                        aes(tooltip = comname, data_id = comname))+
+                   scale_fill_manual(values=predcol) +         #custom colors
+                   facet_grid(season~epu)+
+                   ecodata::theme_facet()+
+                   labs(title = 'Top predators')
+  ) 
+})
 
-for(a in areas){
-  for(t in times){
-    
-    dat <- nstompred %>% filter(epu==a, season==t)
-    
-    cat("  \n####",  as.character(a), as.character(t),"  \n")
-    print(addSmallLegend(ggplot(dat, aes(x=year, y=propstoms, fill=comname)) +
-                               geom_bar(width = 0.9, stat = "identity")+
-                               #geom_bar_interactive(width = 0.9, stat = "identity",
-                               #                     aes(tooltip = comname, data_id = comname))+
-                               scale_fill_manual(values=predcol) +         #custom colors
-                               facet_grid(season~epu)+
-                               ecodata::theme_facet()
-                         ) + 
-      plot_annotation(title = paste0('Top predators, ',a,", ",t))
-      )
-    cat("  \n")   
-  }
-}
+# see https://github.com/rstudio/rmarkdown/issues/1877 for this template
+# to make an interactive plot in an "asis" code chunk
+# but I needed to add this to make it work
+knitr::opts_knit$set(output.dir = here())
+
+contents <- map(names(plist), ~ {knitr::knit_expand(text = c(
+  "#### {{name}}\n",
+  "```{r}",
+  "ggiraph(code = print(plist${{name}}), width_svg = 6, height_svg = 4)",
+  "```\n"
+), name = .x)})
+res = knitr::knit_child(text = unlist(contents), quiet = TRUE)
+cat(res, sep = "\n")
+
 ```
 
 ### {-}
