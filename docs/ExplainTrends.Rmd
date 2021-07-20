@@ -1,7 +1,7 @@
 ---
 title: "Explaining trends"
 author: "Sarah Gaichas"
-date: "7/16/2021"
+date: "7/20/2021"
 output:
   html_document:
     code_fold: hide
@@ -367,6 +367,50 @@ Does this give any insight into our trends?
 Based on the  plots above with the top sampled species in each region, can you see any individual species that we should look at?
 
 What might be the most important individual species to evaluate, and why?
+
+After discussion on 20 July, we will start with this subset of species:
+
+1. Spiny dogfish, because they were a dominant predator sampled in many regions and seasons (except for MAB Fall, where we have the strongest trends).
+1. Atlantic cod, because it is an important managed piscivore for the New England Council.
+1. Summer flounder, because it is an important managed piscivore for the Mid-Atlantic Council.
+1. A benthivore (or two?) of Brian's recommendation
+
+```{r, results='asis'}
+
+preds <- c("SPINY DOGFISH", 
+           "ATLANTIC COD",
+           "SUMMER FLOUNDER")
+areas <- unique(aggdiet4prey$epu)
+times <- unique(aggdiet4prey$season)
+
+
+for(p in preds){
+  cat("  \n###",  as.character(p),"  {.tabset}\n")
+  for(a in areas){
+    for(t in times){
+      p1 <- plotDietCompBar(dat=preddiet4prey%>%filter(comname==p,
+                                                      season==t, epu==a), 
+                            metric="relmsw", 
+                            title="Full diet composition")
+      
+      p2 <- plotPreytrend(dat=preddiet4prey%>%filter(comname==p,
+                                                    season==t, epu==a), 
+                          metric="relmsw", 
+                          title="Trends in components")
+      cat("  \n####",  as.character(a), as.character(t),"  \n")
+      try(print(addSmallLegend(p1) + 
+              p2 + 
+              plot_layout(widths = c(4, 4), guides = 'collect') + 
+              plot_annotation(title = paste0(p,', ',a,", ",t))))
+      cat("  \n")   
+    }
+  }
+  cat("  \n### {-}\n")
+}
+
+```
+
+## {-}
 
 ## What would we do next, given more time?
 
