@@ -1,7 +1,7 @@
 ---
 title: "Explaining trends"
 author: "Sarah Gaichas"
-date: "7/20/2021"
+date: "7/21/2021"
 output:
   html_document:
     code_fold: hide
@@ -379,7 +379,11 @@ After discussion on 20 July, we will start with this subset of species:
 
 preds <- c("SPINY DOGFISH", 
            "ATLANTIC COD",
-           "SUMMER FLOUNDER")
+           "SUMMER FLOUNDER",
+           "HADDOCK",
+           "LITTLE SKATE",
+           "AMERICAN PLAICE",
+           "WINTER FLOUNDER")
 areas <- unique(aggdiet4prey$epu)
 times <- unique(aggdiet4prey$season)
 
