@@ -1,10 +1,11 @@
 ---
 title: "Explaining trends"
 author: "Sarah Gaichas"
-date: "7/21/2021"
+date: "7/27/2021"
 output:
   html_document:
     code_fold: hide
+bibliography: ExplainTrends_files/SOE2021.bib
 ---
 
 ```{r setup, include=FALSE}
@@ -373,7 +374,7 @@ After discussion on 20 July, we will start with this subset of species:
 1. Spiny dogfish, because they were a dominant predator sampled in many regions and seasons (except for MAB Fall, where we have the strongest trends).
 1. Atlantic cod, because it is an important managed piscivore for the New England Council.
 1. Summer flounder, because it is an important managed piscivore for the Mid-Atlantic Council.
-1. A benthivore (or two?) of Brian's recommendation
+1. Brian's recommended benthivores: Haddock, Little skate, American plaice, and winter flounder. All are managed by the New England Council. 
 
 ```{r, results='asis'}
 
@@ -414,7 +415,78 @@ for(p in preds){
 
 ```
 
-## {-}
+### Trends in size for key species {.tabset}
+
+Are we sampling bigger predators where we see increasing trends in fish as prey? There is an increase in the size of summer flounder sampled over time in the MAB.
+
+```{r, results='asis'}
+
+for(p in preds){
+  cat("  \n####",  as.character(p),"  \n")
+  try(print(plotPreytrend(preddiet4prey%>%filter(comname==p, prey=="OTHER"), "meanlen", title=paste0("Average length of ",p), color=FALSE, ylab = "mean length (cm)")))
+  cat("  \n") 
+}
+```
+
+
+### {-}
 
 ## What would we do next, given more time?
 
+### Discuss connections with other ecosystem indicators in the SOE
+
+The following figures and text are from the most recent (2021) Mid-Atlantic State of the Ecosystem report.
+
+```{r, code = readLines("https://raw.githubusercontent.com/NOAA-EDAB/ecodata/master/chunk-scripts/human_dimensions_MAB.Rmd-setup.R")}
+```
+
+```{r, code = readLines("https://raw.githubusercontent.com/NOAA-EDAB/ecodata/master/chunk-scripts/human_dimensions_MAB.Rmd-GIS-setup.R")}
+```
+
+```{r, code = readLines("https://raw.githubusercontent.com/NOAA-EDAB/ecodata/master/chunk-scripts/macrofauna_MAB.Rmd-setup.R")}
+```
+
+```{r, code = readLines("https://raw.githubusercontent.com/NOAA-EDAB/ecodata/master/chunk-scripts/LTL_MAB.Rmd-setup.R")}
+```
+
+- Climate is trending into uncharted territory. Globally, 2020 was tied with the warmest year on record^[https://www.nasa.gov/press-release/2020-tied-for-warmest-year-on-record-nasa-analysis-shows].   
+
+
+#### Water temperature is warming
+
+Ocean temperatures continue to warm at both the bottom and the surface. Warming is not seasonally uniform, however: spring 2020 was cooler than average on portions of the shelf. 
+```{r bottom-temp, fig.cap="Annual bottom temperature in the Mid-Atlantic Bight. (black = in situ observations, red = observations assimilated by ocean model for comparison)", code=readLines("https://raw.githubusercontent.com/NOAA-EDAB/ecodata/master/chunk-scripts/LTL_MAB.Rmd-bottom-temp.R"), fig.width = 4, fig.asp = 0.45}
+```
+
+```{r seasonal-sst-anom-gridded, fig.cap="MAB seasonal sea surface temperature (SST) time series overlaid onto 2020 seasonal spatial anomalies.", code=readLines("https://raw.githubusercontent.com/NOAA-EDAB/ecodata/master/chunk-scripts/LTL_MAB.Rmd-seasonal-sst-anom-gridded.R"), fig.width = 8, fig.asp = 1}
+```
+
+
+#### Species ranges are shifting
+
+Fish stocks are shifting distribution, moving towards the northeast and into deeper waters throughout the Northeast US Large Marine Ecosystem.   
+
+```{r species-dist, fig.cap = "Aggregate species distribution metrics for species in the Northeast Large Marine Ecosystem.", code = readLines("https://raw.githubusercontent.com/NOAA-EDAB/ecodata/master/chunk-scripts/macrofauna_MAB.Rmd-species-dist.R"), fig.width = 4, fig.asp=.9}
+```  
+
+
+#### Energy content of some forage fish is changing
+
+Nutritional value (energy content) of juvenile and adult forage fishes as prey is related to both environmental conditions, fish growth and reproductive cycles. Forage energy density measurements from NEFSC trawl surveys 2017-2019 are building toward a time series to evaluate trends. New 2019 measurements were consistent with last year’s report: the energy density of Atlantic herring was almost half the value (5.69 +/- 0.07 kJ/g wet weight) reported in earlier studies (10.6-9.4 kJ/ g wet weight). Silver hake, sandlance, longfin squid (*Loligo* below) and shortfin squid (*Illex* below) were also lower than previous estimates [@steimle_energy_1985; @lawson_important_1998]. Energy density of alewife, butterfish and Atlantic mackerel varies seasonally, with seasonal estimates both higher and lower than estimates from  previous decades. 
+
+```{r energy-density, fig.cap="Forage fish mean energy density mean and standard deviation by season and year, compared with 1980s (Steimle and Terranove 1985) and 1990s (Lawson et al. 1998) values.", code=readLines("https://raw.githubusercontent.com/NOAA-EDAB/ecodata/master/chunk-scripts/macrofauna_MAB.Rmd-energy-density.R"), fig.width = 7.5, fig.asp = 0.5}
+```
+
+
+### Next steps for diet analysis
+
+Examine the individual prey categories: are any particular fish prey driving the increase in the MAB in Fall? are any particular benthic invertebrates disappearing from diets in the MAB in Fall?
+
+```{r}
+#this nifty trick from here https://stackoverflow.com/questions/48462015/how-can-i-use-a-url-for-the-bibliography-yaml-element-in-an-rmarkdown-document
+
+dir.create("ExplainTrends_files")
+download.file("https://raw.githubusercontent.com/NOAA-EDAB/SOE-MAFMC/master/SOE2021.bib", "ExplainTrends_files/SOE2021.bib")
+```
+
+## References
