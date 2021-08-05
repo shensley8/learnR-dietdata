@@ -277,7 +277,10 @@ p <- ggplot(nstompred, aes(x=year, y=propstoms, fill=comname)) +
   geom_bar_interactive(width = 1, stat = "identity", show.legend = FALSE,
                        aes(tooltip = comname, data_id = comname))+
   scale_fill_manual(values=predcol) +         #custom colors
-  facet_grid(epu~season)+
+  #facet_grid(epu~season)+
+  facet_grid(fct_relevel(epu, "SS", "GOM", "GB", "MAB")~
+             fct_relevel(season, "SPRING", "FALL"),                 #separate by epu, season
+             labeller = labeller(.multi_line = FALSE)) +
   ecodata::theme_facet()
 
 ggiraph(code=print(p))
@@ -343,7 +346,10 @@ nstomgroup <- preddiet4prey %>% # a pipe operator that strings the commands toge
 
 ggplot(nstomgroup, aes(x=year, y=annstoms, fill=soe.20)) +
   geom_bar(width = 1, stat = "identity", position="fill")+
-  facet_grid(epu~season)+
+  #facet_grid(epu~season)+
+  facet_grid(fct_relevel(epu, "SS", "GOM", "GB", "MAB")~
+             fct_relevel(season, "SPRING", "FALL"),                 #separate by epu, season
+             labeller = labeller(.multi_line = FALSE)) +
   ecodata::theme_facet()+
   labs(title = "Proportion of stomachs by predator category")               #add sensible labels
 
@@ -354,7 +360,10 @@ Looks like the proportion of piscivores was dominant for much of the 1980s and 1
 
 ggplot(nstomgroup, aes(x=year, y=annstoms, fill=soe.20)) +
   geom_bar(width = 1, stat = "identity") +
-  facet_grid(epu~season)+
+  #facet_grid(epu~season)+
+  facet_grid(fct_relevel(epu, "SS", "GOM", "GB", "MAB")~
+             fct_relevel(season, "SPRING", "FALL"),                 #separate by epu, season
+             labeller = labeller(.multi_line = FALSE)) +
   ecodata::theme_facet()+
   labs(title = "Number of stomachs by predator category")
 
